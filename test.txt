@@ -1,61 +1,58 @@
-import { Component } from '@angular/core';
+import { ComponentFixture, TestBed, async } from '@angular/core/testing';
+import { AppComponent } from './app.component';
 import { VaccinationService } from './vaccination.service';
 import { Vaccination } from './vaccination';
-import { HttpErrorResponse } from '@angular/common/http';
+import { of } from 'rxjs';
 
-@Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
-})
+describe('AppComponent', () => {
+  let component: AppComponent;
+  let fixture: ComponentFixture<AppComponent>;
+  let vaccinationService: jasmine.SpyObj<VaccinationService>;
 
-export class AppComponent {
-  vaccinations: Vaccination[] = []; 
-  public addAppointment: Vaccination={
-    StartTime: '',
-    EndTime: ''
-  };
-  public deleteAppointment: Vaccination={
-    StartTime: '',
-    EndTime: ''
-  };
-  constructor(public vaccinationService: VaccinationService) { 
-  }
+  beforeEach(async(() => {
+    const spy = jasmine.createSpyObj('VaccinationService', ['getAppointments', 'addAppointment', 'deleteAppointment']);
 
-  ngOnInit() {
-    this.getAppointments();
-  }
+    TestBed.configureTestingModule({
+      declarations: [ AppComponent ],
+      providers: [
+        { provide: VaccinationService, useValue: spy }
+      ]
+    }).compileComponents();
 
-  public getAppointments(): void {
-    this.vaccinationService.getAppointments().subscribe(
-      vaccinations => this.vaccinations = vaccinations
-    );
-  }
+    fixture = TestBed.createComponent(AppComponent);
+    component = fixture.componentInstance;
+    vaccinationService = TestBed.inject(VaccinationService) as jasmine.SpyObj<VaccinationService>;
+  }));
 
-  public onAddAppointment(){
-    this.vaccinationService.addAppointment(this.addAppointment).subscribe(
-      
-      (response: Vaccination) => {
-        console.log(response);
-        this.getAppointments();
-        
-      },
-      (error: HttpErrorResponse) => {
-        alert(error.message);
-      }
-    );
-  }
+  it('should create the app', () => {
+    expect(component).toBeTruthy();
+  });
 
-  public onDeleteAppointment(vaccinationId: number): void {
-    this.vaccinationService.deleteAppointment(vaccinationId).subscribe(
-      () => {
-        console.log('Vaccination with ID ${id} deleted. ');
-        this.vaccinations = this.vaccinations.filter(v => v.Id !== vaccinationId)
-        this.getAppointments();
-      },
-      (error: HttpErrorResponse) => {
-        alert(error.message);
-      }
-    );
-  }
-}
+  it('should retrieve appointments on init', () => {
+    const appointments: Vaccination[] = [{ Id: 1, StartTime: '2023-03-24T10:00:00', EndTime: '2023-03-24T11:00:00' }];
+    vaccinationService.getAppointments.and.returnValue(of(appointments));
+    component.ngOnInit();
+    expect(component.vaccinations).toEqual(appointments);
+  });
+
+  it('should add appointment', () => {
+    const appointment: Vaccination = { StartTime: '2023-03-24T12:00:00', EndTime: '2023-03-24T13:00:00' };
+    const response: Vaccination = { Id: 2, StartTime: '2023-03-24T12:00:00', EndTime: '2023-03-24T13:00:00' };
+    vaccinationService.addAppointment.and.returnValue(of(response));
+    component.addAppointment = appointment;
+    component.onAddAppointment();
+    expect(vaccinationService.addAppointment).toHaveBeenCalledWith(appointment);
+    expect(component.vaccinations).toContain(response);
+  });
+
+  it('should delete appointment', () => {
+    const appointment: Vaccination = { Id: 1, StartTime: '2023-03-24T10:00:00', EndTime: '2023-03-24T11:00:00' };
+    vaccinationService.deleteAppointment.and.returnValue(of(null));
+    spyOn(window, 'alert');
+    component.vaccinations = [appointment];
+    component.onDeleteAppointment(appointment.Id);
+    expect(vaccinationService.deleteAppointment).toHaveBeenCalledWith(appointment.Id);
+    expect(component.vaccinations).not.toContain(appointment);
+    expect(window.alert).not.toHaveBeenCalled();
+  });
+});
