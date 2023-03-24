@@ -1,60 +1,61 @@
-body {
-  background-color: #f2f7ff;
-}
+import { Component } from '@angular/core';
+import { VaccinationService } from './vaccination.service';
+import { Vaccination } from './vaccination';
+import { HttpErrorResponse } from '@angular/common/http';
 
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-}
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
+})
 
-.add-form {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 5px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.delete-table {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 5px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 2rem;
-}
-
-button[type="submit"] {
-  background-color: #4CAF50;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-top: 1rem;
-
-  &:hover {
-    background-color: #3e8e41;
+export class AppComponent {
+  vaccinations: Vaccination[] = []; 
+  public addAppointment: Vaccination={
+    StartTime: '',
+    EndTime: ''
+  };
+  public deleteAppointment: Vaccination={
+    StartTime: '',
+    EndTime: ''
+  };
+  constructor(public vaccinationService: VaccinationService) { 
   }
-}
 
-button[type="button"] {
-  background-color: #f44336;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-left: 1rem;
+  ngOnInit() {
+    this.getAppointments();
+  }
 
-  &:hover {
-    background-color: #d32f2f;
+  public getAppointments(): void {
+    this.vaccinationService.getAppointments().subscribe(
+      vaccinations => this.vaccinations = vaccinations
+    );
+  }
+
+  public onAddAppointment(){
+    this.vaccinationService.addAppointment(this.addAppointment).subscribe(
+      
+      (response: Vaccination) => {
+        console.log(response);
+        this.getAppointments();
+        
+      },
+      (error: HttpErrorResponse) => {
+        alert(error.message);
+      }
+    );
+  }
+
+  public onDeleteAppointment(vaccinationId: number): void {
+    this.vaccinationService.deleteAppointment(vaccinationId).subscribe(
+      () => {
+        console.log('Vaccination with ID ${id} deleted. ');
+        this.vaccinations = this.vaccinations.filter(v => v.Id !== vaccinationId)
+        this.getAppointments();
+      },
+      (error: HttpErrorResponse) => {
+        alert(error.message);
+      }
+    );
   }
 }
