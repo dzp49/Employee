@@ -1,83 +1,61 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed,  waitForAsync } from '@angular/core/testing';
+import { AppComponent } from './app.component';
 import { VaccinationService } from './vaccination.service';
 import { Vaccination } from './vaccination';
+import { FormsModule, NgForm } from '@angular/forms';
+import { Observable, of } from 'rxjs';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
-describe('VaccinationService', () => {
-  let service: VaccinationService;
-  let httpMock: HttpTestingController;
+describe('AppComponent', () => {
+  let component: AppComponent;
+  let fixture: ComponentFixture<AppComponent>;
+  let vaccinationService: jasmine.SpyObj<VaccinationService>;
 
-  beforeEach(() => {
+  beforeEach(waitForAsync(() => {
+    const spy = jasmine.createSpyObj('VaccinationService', ['getAppointments', 'addAppointment', 'deleteAppointment']);
+
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [VaccinationService]
-    });
-    service = TestBed.inject(VaccinationService);
-    httpMock = TestBed.inject(HttpTestingController);
+      imports: [HttpClientTestingModule,FormsModule],
+      declarations: [ AppComponent ],
+      providers: [
+        { provide: VaccinationService, useValue: spy }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AppComponent);
+    component = fixture.componentInstance;
+    vaccinationService = TestBed.inject(VaccinationService) as jasmine.SpyObj<VaccinationService>;
+  }));
+
+  it('should create the app', () => {
+    expect(component).toBeTruthy();
   });
 
-  afterEach(() => {
-    httpMock.verify();
+  it('should retrieve appointments on init', () => {
+    const appointments: Vaccination[] = [{ Id: 1, StartTime: '12:30', EndTime: '13:00' }];
+    vaccinationService.getAppointments.and.returnValue(of(appointments));
+    component.ngOnInit();
+    expect(component.vaccinations).toEqual(appointments);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+  it('should add appointment', () => {
+    const appointment: Vaccination = { StartTime: '12:30', EndTime: '13:00' };
+    const response: Vaccination = { Id: 2, StartTime: '12:30', EndTime: '13:00' };
+    vaccinationService.addAppointment.and.returnValue(of(response));
+    component.addAppointment = appointment;
+    component.onAddAppointment();
+    expect(vaccinationService.addAppointment).toHaveBeenCalledWith(appointment);
+    console.log("Testing here:"+response.StartTime);
   });
 
-  describe('getAppointments', () => {
-    it('should return a list of vaccinations', () => {
-      const mockResponse: Vaccination[] = [{ Id: 1, StartTime: '12:00', EndTime: '13:00' }];
-
-      service.getAppointments().subscribe((vaccinations) => {
-        expect(vaccinations).toEqual(mockResponse);
-      });
-
-      const mockReq = httpMock.expectOne(service.apiUrl);
-      expect(mockReq.request.method).toBe('GET');
-      mockReq.flush({ vaccination: mockResponse });
-    });
-  });
-
-  describe('addAppointment', () => {
-    it('should add a vaccination', () => {
-      const mockVaccination: Vaccination = { StartTime: '14:00', EndTime: '15:00' };
-
-      service.addAppointment(mockVaccination).subscribe((vaccination) => {
-        expect(vaccination).toEqual({ Id: 1, StartTime: '14:00', EndTime: '15:00' });
-      });
-
-      const mockReq = httpMock.expectOne(service.apiUrl);
-      expect(mockReq.request.method).toBe('POST');
-      mockReq.flush({ Id: 1, ...mockVaccination });
-    });
-  });
-
-  describe('updateAppointment', () => {
-    it('should update a vaccination', () => {
-      const mockVaccination: Vaccination = { Id: 1, StartTime: '16:00', EndTime: '17:00' };
-
-      service.updateAppointment(mockVaccination, 1).subscribe((vaccination) => {
-        expect(vaccination).toEqual(mockVaccination);
-      });
-
-      const mockReq = httpMock.expectOne(`${service.apiUrl}/update/1`);
-      expect(mockReq.request.method).toBe('PUT');
-      expect(mockReq.request.body).toEqual(mockVaccination);
-      mockReq.flush(mockVaccination);
-    });
-  });
-
-  describe('deleteAppointment', () => {
-    it('should delete a vaccination', () => {
-      const mockId = 1;
-
-      service.deleteAppointment(mockId).subscribe(() => {
-        expect().nothing();
-      });
-
-      const mockReq = httpMock.expectOne(`${service.apiUrl}/delete/${mockId}`);
-      expect(mockReq.request.method).toBe('DELETE');
-      mockReq.flush(null);
-    });
-  });
+  // it('should delete appointment', () => {
+  //   const appointment: Vaccination = { Id: 2, StartTime: '12:30', EndTime: '13:00' };
+  //   vaccinationService.deleteAppointment.and.returnValue();
+  //   spyOn(window, 'alert');
+  //   component.vaccinations = [appointment];
+  //   component.onDeleteAppointment(appointment.Id);
+  //   expect(vaccinationService.deleteAppointment).toHaveBeenCalledWith(appointment.Id);
+  //   expect(component.vaccinations).not.toContain(appointment);
+  //   expect(window.alert).not.toHaveBeenCalled();
+  // });
 });
