@@ -1,58 +1,35 @@
-import { ComponentFixture, TestBed, async } from '@angular/core/testing';
-import { AppComponent } from './app.component';
-import { VaccinationService } from './vaccination.service';
-import { Vaccination } from './vaccination';
-import { of } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Vaccination, VaccinationResponse } from './vaccination';
+import { BehaviorSubject, map, Observable } from 'rxjs';
 
-describe('AppComponent', () => {
-  let component: AppComponent;
-  let fixture: ComponentFixture<AppComponent>;
-  let vaccinationService: jasmine.SpyObj<VaccinationService>;
+@Injectable({
+  providedIn: 'root'
+})
+export class VaccinationService {
 
-  beforeEach(async(() => {
-    const spy = jasmine.createSpyObj('VaccinationService', ['getAppointments', 'addAppointment', 'deleteAppointment']);
+  apiUrl='http://127.0.0.1:5000/vaccinationList'
+  vaccinations: Vaccination[] = [];
+  public addAppointments: Vaccination={
+    StartTime: '',
+    EndTime: ''
+  };
+  constructor(private http:HttpClient) { }
 
-    TestBed.configureTestingModule({
-      declarations: [ AppComponent ],
-      providers: [
-        { provide: VaccinationService, useValue: spy }
-      ]
-    }).compileComponents();
+  public getAppointments(): Observable<Vaccination[]> {
+    return this.http.get<VaccinationResponse>(`${this.apiUrl}`).pipe(map(response => response.vaccination));
+  }
 
-    fixture = TestBed.createComponent(AppComponent);
-    component = fixture.componentInstance;
-    vaccinationService = TestBed.inject(VaccinationService) as jasmine.SpyObj<VaccinationService>;
-  }));
+  public addAppointment(vaccination: Vaccination): Observable<Vaccination> {
+    return this.http.post<Vaccination>(`${this.apiUrl}`, vaccination);
+  }
 
-  it('should create the app', () => {
-    expect(component).toBeTruthy();
-  });
+  public updateAppointment(vaccination: Vaccination, id: number): Observable<Vaccination> {
+    return this.http.put<Vaccination>(`${this.apiUrl}/update/${id}`, vaccination);
+  }
 
-  it('should retrieve appointments on init', () => {
-    const appointments: Vaccination[] = [{ Id: 1, StartTime: '2023-03-24T10:00:00', EndTime: '2023-03-24T11:00:00' }];
-    vaccinationService.getAppointments.and.returnValue(of(appointments));
-    component.ngOnInit();
-    expect(component.vaccinations).toEqual(appointments);
-  });
+  public deleteAppointment(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/delete/${id}`);
+  }
 
-  it('should add appointment', () => {
-    const appointment: Vaccination = { StartTime: '2023-03-24T12:00:00', EndTime: '2023-03-24T13:00:00' };
-    const response: Vaccination = { Id: 2, StartTime: '2023-03-24T12:00:00', EndTime: '2023-03-24T13:00:00' };
-    vaccinationService.addAppointment.and.returnValue(of(response));
-    component.addAppointment = appointment;
-    component.onAddAppointment();
-    expect(vaccinationService.addAppointment).toHaveBeenCalledWith(appointment);
-    expect(component.vaccinations).toContain(response);
-  });
-
-  it('should delete appointment', () => {
-    const appointment: Vaccination = { Id: 1, StartTime: '2023-03-24T10:00:00', EndTime: '2023-03-24T11:00:00' };
-    vaccinationService.deleteAppointment.and.returnValue(of(null));
-    spyOn(window, 'alert');
-    component.vaccinations = [appointment];
-    component.onDeleteAppointment(appointment.Id);
-    expect(vaccinationService.deleteAppointment).toHaveBeenCalledWith(appointment.Id);
-    expect(component.vaccinations).not.toContain(appointment);
-    expect(window.alert).not.toHaveBeenCalled();
-  });
-});
+}
